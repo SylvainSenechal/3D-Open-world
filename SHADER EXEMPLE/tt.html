@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - custom attributes [particles]</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #ffffff;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				font-weight: bold;
+				background-color: #000000;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				color: #fff;
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+				z-index:100;
+			}
+			a { color: #ff0000 }
+		</style>
+	</head>
+
+	<body>
+		<div id="info"><a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - custom attributes example - particles</div>
+		<div id="container"></div>
+
+<script src='//rawgit.com/mrdoob/stats.js/master/build/stats.min.js'></script>
+<script src='https://threejs.org/build/three.min.js'></script>
+
+		<script type="x-shader/x-vertex" id="vertexshader">
+			uniform float amplitude;
+			attribute float size;
+			attribute vec3 customColor;
+			varying vec3 vColor;
+			void main() {
+				vColor = customColor;
+				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+				gl_PointSize = size * ( 300.0 / -mvPosition.z );
+				gl_Position = projectionMatrix * mvPosition;
+			}
+		</script>
+
+		<script type="x-shader/x-fragment" id="fragmentshader">
+			uniform vec3 color;
+			uniform sampler2D texture;
+			varying vec3 vColor;
+			void main() {
+				gl_FragColor = vec4( color * vColor, 1.0 );
+				gl_FragColor = gl_FragColor * texture2D( texture, gl_PointCoord );
+			}
+		</script>
+
+
+		<script>
+		var renderer, scene, camera, stats;
+		var sphere;
+		var noise = [];
+		var WIDTH = window.innerWidth;
+		var HEIGHT = window.innerHeight;
+		init();
+		animate();
+		function init() {
+			camera = new THREE.PerspectiveCamera( 40, WIDTH / HEIGHT, 1, 10000 );
+			camera.position.z = 300;
+			scene = new THREE.Scene();
+			var amount = 100000;
+			var radius = 200;
+			var positions = new Float32Array( amount * 3 );
+			var colors = new Float32Array( amount * 3 );
+			var sizes = new Float32Array( amount );
+			var vertex = new THREE.Vector3();
+			var color = new THREE.Color( 0xffffff );
+			for ( var i = 0; i < amount; i ++ ) {
+				vertex.x = ( Math.random() * 2 - 1 ) * radius;
+				vertex.y = ( Math.random() * 2 - 1 ) * radius;
+				vertex.z = ( Math.random() * 2 - 1 ) * radius;
+				vertex.toArray( positions, i * 3 );
+				if ( vertex.x < 0 ) {
+					color.setHSL( 0.5 + 0.1 * ( i / amount ), 0.7, 0.5 );
+				} else {
+					color.setHSL( 0.0 + 0.1 * ( i / amount ), 0.9, 0.5 );
+				}
+				color.toArray( colors, i * 3 );
+				sizes[ i ] = 10;
+			}
+			var geometry = new THREE.BufferGeometry();
+			geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+			geometry.addAttribute( 'customColor', new THREE.BufferAttribute( colors, 3 ) );
+			geometry.addAttribute( 'size', new THREE.BufferAttribute( sizes, 1 ) );
+			//
+			var material = new THREE.ShaderMaterial( {
+				uniforms: {
+					amplitude: { value: 1.0 },
+					color:     { value: new THREE.Color( 0xffffff ) },
+					texture:   { value: new THREE.TextureLoader().load( "spark1.png" ) }
+				},
+				vertexShader:   document.getElementById( 'vertexshader' ).textContent,
+				fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
+				blending:       THREE.AdditiveBlending,
+				depthTest:      false,
+				transparent:    true
+			});
+			//
+			sphere = new THREE.Points( geometry, material );
+			scene.add( sphere );
+			//
+			renderer = new THREE.WebGLRenderer();
+			renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setSize( WIDTH, HEIGHT );
+			var container = document.getElementById( 'container' );
+			container.appendChild( renderer.domElement );
+			stats = new Stats();
+			container.appendChild( stats.dom );
+			//
+			window.addEventListener( 'resize', onWindowResize, false );
+		}
+		function onWindowResize() {
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+		}
+		function animate() {
+			requestAnimationFrame( animate );
+			render();
+			stats.update();
+		}
+		function render() {
+			var time = Date.now() * 0.005;
+			sphere.rotation.z = 0.01 * time;
+			var geometry = sphere.geometry;
+			var attributes = geometry.attributes;
+			var len
+			for ( var i = 0,  len = attributes.size.array.length; i<len; i++ ) {
+				attributes.size.array[ i ] = 14 + 13 * Math.sin( 0.1 * i + time );
+				/*attributes.size.array[ i +1] = 14 + 13 * Math.sin( 0.1 * (i+1) + time );
+				attributes.size.array[ i +2] = 14 + 13 * Math.sin( 0.1 * (i+2) + time );
+				attributes.size.array[ i +3] = 14 + 13 * Math.sin( 0.1 * (i+3) + time );
+				attributes.size.array[ i +4] = 14 + 13 * Math.sin( 0.1 * (i+4) + time );
+				attributes.size.array[ i +5] = 14 + 13 * Math.sin( 0.1 * (i+5) + time );
+				attributes.size.array[ i +6] = 14 + 13 * Math.sin( 0.1 * (i+6) + time );
+				attributes.size.array[ i +7] = 14 + 13 * Math.sin( 0.1 * (i+7) + time );*/
+
+			/*	attributes.size.array[ i +8] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +9] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +10] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +11] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +12] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +13] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +14] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +15] = 14 + 13 * Math.sin( 0.1 * i + time );
+
+				attributes.size.array[ i +16] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +17] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +18] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +19] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +20] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +21] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +22] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +23] = 14 + 13 * Math.sin( 0.1 * i + time );
+
+				attributes.size.array[ i +24] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +25] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +26] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +27] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +28] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +29] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +30] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +31] = 14 + 13 * Math.sin( 0.1 * i + time );
+
+				attributes.size.array[ i +32] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +33] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +34] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +35] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +36] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +37] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +38] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +39] = 14 + 13 * Math.sin( 0.1 * i + time );
+
+				attributes.size.array[ i +40] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +41] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +42] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +43] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +44] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +45] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +46] = 14 + 13 * Math.sin( 0.1 * i + time );
+				attributes.size.array[ i +47] = 14 + 13 * Math.sin( 0.1 * i + time );
+*/
+
+			}
+			attributes.size.needsUpdate = true;
+			renderer.render( scene, camera );
+		}
+	</script>
+
+</body>
+
+</html>
